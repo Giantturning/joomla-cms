@@ -14,12 +14,14 @@ use Joomla\CMS\Access\Exception\NotAllowed;
 use Joomla\CMS\Application\CMSWebApplicationInterface;
 use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Form\Form;
+use Joomla\CMS\Helper\TagsHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Factory\MVCFactoryInterface;
 use Joomla\CMS\MVC\Model\ListModel;
 use Joomla\CMS\MVC\Model\State;
 use Joomla\CMS\MVC\View\JsonApiView;
 use Joomla\CMS\Response\JsonResponse;
+use Joomla\CMS\Tag\TaggableTableInterface;
 use Joomla\Input\Input;
 use Joomla\Registry\Registry;
 use Tobscure\JsonApi\Exception\InvalidParameterException;
@@ -520,6 +522,16 @@ class ApiController extends BaseController
             if (\in_array(strtoupper($form->getFieldAttribute($field, 'filter', '')), ['SERVER_UTC', 'USER_UTC'], true)) {
                 $validData[$field] = $value;
             }
+        }
+
+        // A PATCH request without tags keeps the existing tags instead of removing them
+        if (
+            !isset($validData['tags']) && $recordKey && $this->input->getMethod() === 'PATCH'
+            && $table instanceof TaggableTableInterface
+        ) {
+            $tagIds = (new TagsHelper())->getTagIds($recordKey, $table->getTypeAlias());
+
+            $validData['tags'] = $tagIds ? explode(',', $tagIds) : [];
         }
 
         if (!isset($validData['tags'])) {
